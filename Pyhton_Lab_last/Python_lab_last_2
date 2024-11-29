@@ -1,0 +1,63 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List
+
+app = FastAPI()
+
+# Predefined sample dataset
+data_store = [
+    {"id": 1, "name": "John Doe", "score": 95.5},
+    {"id": 2, "name": "Jane Smith", "score": 89.0},
+    {"id": 3, "name": "Alice Johnson", "score": 76.5}
+]
+
+# Data model
+class Record(BaseModel):
+    id: int
+    name: str
+    score: float
+
+# Endpoint to check server is running
+@app.get("/")
+def read_root():
+    return {"message": "FastAPI is running. Use /records to interact with the dataset."}
+
+# Endpoint to retrieve all records
+@app.get("/records", response_model=List[Record])
+def read_records():
+    return data_store
+
+# Endpoint to retrieve a single record by ID
+@app.get("/records/{record_id}", response_model=Record)
+def read_record(record_id: int):
+    for record in data_store:
+        if record["id"] == record_id:
+            return record
+    raise HTTPException(status_code=404, detail="Record not found")
+
+# Endpoint to create a new record
+@app.post("/records", response_model=Record)
+def create_record(record: Record):
+    for existing_record in data_store:
+        if existing_record["id"] == record.id:
+            raise HTTPException(status_code=400, detail="Record with this ID already exists")
+    data_store.append(record.dict())
+    return record
+
+# Endpoint to update an existing record
+@app.put("/records/{record_id}", response_model=Record)
+def update_record(record_id: int, updated_record: Record):
+    for i, record in enumerate(data_store):
+        if record["id"] == record_id:
+            data_store[i] = updated_record.dict()
+            return updated_record
+    raise HTTPException(status_code=404, detail="Record not found")
+
+# Endpoint to delete a record
+@app.delete("/records/{record_id}")
+def delete_record(record_id: int):
+    for i, record in enumerate(data_store):
+        if record["id"] == record_id:
+            del data_store[i]
+            return {"message": "Record deleted successfully"}
+    raise HTTPException(status_code=404, detail="Record not found")
